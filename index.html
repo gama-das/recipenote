@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>RecipeNote ― 我が家の味</title>
+<script>
+// 早期エラー収集（後続スクリプトのエラーも画面に出すため）
+window.__rnErrors = [];
+window.addEventListener("error", function(e){
+  window.__rnErrors.push(e.message || "不明なエラー");
+  var el = document.getElementById("lockDetail");
+  if(el) el.textContent = "エラー詳細: " + window.__rnErrors.join(" / ");
+});
+document.addEventListener("DOMContentLoaded", function(){
+  if(window.__rnErrors.length){
+    var el = document.getElementById("lockDetail");
+    if(el) el.textContent = "エラー詳細: " + window.__rnErrors.join(" / ");
+  }
+});
+</script>
+<style>
+  :root{
+    --bg:#fff8ef; --card:#ffffff; --ink:#3d2b1f; --sub:#8a6f5c;
+    --accent:#c2571d; --accent-dark:#9c3f10; --line:#f0ddc8; --chip:#fdeeda;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Noto Sans JP",sans-serif;
+    background:var(--bg); color:var(--ink);}
+  button{font-family:inherit; cursor:pointer;}
+  input{font-family:inherit;}
+
+  /* ロック画面 */
+  #lock{min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px;}
+  .lock-box{width:100%; max-width:380px; background:var(--card); border:1px solid var(--line);
+    border-radius:20px; padding:32px 24px; text-align:center; box-shadow:0 8px 30px rgba(156,63,16,.08);}
+  .lock-box .logo{font-size:52px;}
+  .lock-box h1{margin:8px 0 2px; font-size:24px;}
+  .lock-box .tagline{color:var(--sub); font-size:14px; margin:0 0 24px;}
+  .lock-box form{display:flex; flex-direction:column; gap:12px;}
+  .lock-box input[type=password]{font-size:17px; padding:13px 14px; border:1.5px solid var(--line);
+    border-radius:12px; outline:none; text-align:center;}
+  .lock-box input[type=password]:focus{border-color:var(--accent);}
+  .lock-box button{background:var(--accent); color:#fff; border:none; font-size:16px; font-weight:700;
+    padding:13px; border-radius:12px;}
+  .lock-box button:active{background:var(--accent-dark);}
+  .lock-box button:disabled{opacity:.5;}
+  #lockError{color:#c0392b; font-size:14px; min-height:20px; margin:0;}
+  .lock-note{color:var(--sub); font-size:12px; margin-top:18px; line-height:1.6;}
+
+  /* 一覧画面 */
+  #app{display:none; max-width:880px; margin:0 auto; padding:0 16px 60px;}
+  header.top{display:flex; align-items:center; justify-content:space-between; padding:20px 4px 6px;}
+  header.top h1{font-size:22px; margin:0;}
+  header.top h1 .ico{margin-right:6px;}
+  #lockBtn{background:none; border:1.5px solid var(--line); color:var(--sub); border-radius:999px;
+    padding:6px 14px; font-size:13px;}
+  .proto-banner{background:#fff3cd; border:1px solid #eed98a; color:#6b5510; font-size:13px;
+    border-radius:10px; padding:8px 12px; margin:10px 0 4px; text-align:center;}
+  .search-wrap{margin:14px 0 10px;}
+  #search{width:100%; font-size:16px; padding:12px 16px; border:1.5px solid var(--line);
+    border-radius:999px; outline:none; background:#fff;}
+  #search:focus{border-color:var(--accent);}
+  .chips{display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 16px;}
+  .chip{border:1.5px solid var(--line); background:#fff; color:var(--ink); border-radius:999px;
+    padding:6px 14px; font-size:14px;}
+  .chip.active{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px;
+    text-align:left; width:100%; box-shadow:0 2px 10px rgba(156,63,16,.05);}
+  .card:active{transform:scale(.99);}
+  .card .icon{font-size:40px; line-height:1;}
+  .card h2{font-size:18px; margin:10px 0 6px; line-height:1.4;}
+  .meta{color:var(--sub); font-size:13px; line-height:1.7;}
+  .cat{display:inline-block; background:var(--chip); color:var(--accent-dark); font-size:12px;
+    font-weight:700; border-radius:999px; padding:2px 10px; margin-bottom:6px;}
+  .empty{color:var(--sub); text-align:center; padding:40px 0; font-size:15px;}
+
+  /* 詳細画面 */
+  #detail{display:none; position:fixed; inset:0; background:var(--bg); overflow-y:auto; z-index:10;}
+  .detail-inner{max-width:680px; margin:0 auto; padding:0 18px 60px;}
+  #backBtn{background:none; border:none; color:var(--accent); font-size:16px; font-weight:700; padding:16px 0 4px;}
+  .detail-inner .big-icon{font-size:60px; text-align:center; margin-top:6px;}
+  .detail-inner h2{font-size:24px; text-align:center; margin:8px 0 4px;}
+  .detail-meta{text-align:center; color:var(--sub); font-size:14px; margin-bottom:20px;}
+  .detail-inner h3{font-size:17px; border-bottom:2px solid var(--line); padding-bottom:6px; margin:26px 0 12px;}
+  table.ing{width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  table.ing td{padding:9px 14px; font-size:15px; border-bottom:1px solid #f7ecdd;}
+  table.ing tr:last-child td{border-bottom:none;}
+  table.ing td.amt{text-align:right; color:var(--sub); white-space:nowrap; width:35%;}
+  ol.steps{padding-left:22px; line-height:1.9; font-size:15.5px; margin:0;}
+  .memo{background:#fff; border:1px solid var(--line); border-left:5px solid var(--accent);
+    border-radius:10px; padding:12px 16px; font-size:14.5px; line-height:1.8; white-space:pre-wrap;}
+</style>
+</head>
+<body>
+
+<!-- 合言葉画面 -->
+<div id="lock">
+  <div class="lock-box">
+    <div class="logo">🍳</div>
+    <h1>RecipeNote</h1>
+    <p class="tagline">― 我が家の味 ―</p>
+    <form id="lockForm">
+      <input type="password" id="pw" placeholder="家族の合言葉" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false">
+      <p id="lockError"></p>
+      <p id="lockDetail" style="color:#8a6f5c; font-size:11px; margin:0; word-break:break-all;"></p>
+      <button type="submit" id="unlockBtn">開く</button>
+    </form>
+    <p class="lock-note">このページのレシピは暗号化されています。<br>合言葉を知っている家族だけが読めます。</p>
+  </div>
+</div>
+
+<!-- 一覧画面 -->
+<div id="app">
+  <header class="top">
+    <h1><span class="ico">🍳</span>RecipeNote</h1>
+    <button id="lockBtn">🔒 鍵をかける</button>
+  </header>
+  <div class="proto-banner">試作版 v2 です ― 中身はサンプルレシピが入っています</div>
+  <div class="search-wrap">
+    <input type="search" id="search" placeholder="料理名・材料で探す">
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" style="display:none;">見つかりませんでした</p>
+</div>
+
+<!-- 詳細画面 -->
+<div id="detail">
+  <div class="detail-inner" id="detailInner"></div>
+</div>
+
+<script>
+"use strict";
+// 暗号化されたレシピデータ（合言葉なしでは読めません）
+const PAYLOAD = {"v":2,"salt":"bsXcekxQjkwEN4aOkSI5Tg==","iv":"1Tjh4KkllOrfeanQ","data":"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"};
+const KDF_ROUNDS = 100000;
+
+/* SHA-256（純JavaScript実装。鍵の導出をブラウザ標準機能に頼らないことで
+   Safariなどでの互換性問題を避ける） */
+function sha256Bytes(input){
+  const K = [
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,
+      h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
+  const len = input.length;
+  const paddedLen = Math.ceil((len + 9) / 64) * 64;
+  const msg = new Uint8Array(paddedLen);
+  msg.set(input);
+  msg[len] = 0x80;
+  const dv = new DataView(msg.buffer);
+  dv.setUint32(paddedLen - 4, len * 8, false);
+  dv.setUint32(paddedLen - 8, Math.floor(len / 536870912), false);
+  const w = new Int32Array(64);
+  const rotr = (x,n)=> (x>>>n) | (x<<(32-n));
+  for(let chunk=0; chunk<paddedLen; chunk+=64){
+    for(let i=0;i<16;i++) w[i] = dv.getInt32(chunk + i*4, false);
+    for(let i=16;i<64;i++){
+      const s0 = rotr(w[i-15],7) ^ rotr(w[i-15],18) ^ (w[i-15]>>>3);
+      const s1 = rotr(w[i-2],17) ^ rotr(w[i-2],19) ^ (w[i-2]>>>10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+    }
+    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
+    for(let i=0;i<64;i++){
+      const S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[i] + w[i]) | 0;
+      const S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) | 0;
+      h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;
+    }
+    h0=(h0+a)|0; h1=(h1+b)|0; h2=(h2+c)|0; h3=(h3+d)|0;
+    h4=(h4+e)|0; h5=(h5+f)|0; h6=(h6+g)|0; h7=(h7+h)|0;
+  }
+  const out = new Uint8Array(32);
+  const odv = new DataView(out.buffer);
+  [h0,h1,h2,h3,h4,h5,h6,h7].forEach((v,i)=> odv.setUint32(i*4, v, false));
+  return out;
+}
+
+function deriveKeyBytes(password, salt){
+  const pw = new TextEncoder().encode(password);
+  const first = new Uint8Array(salt.length + pw.length);
+  first.set(salt); first.set(pw, salt.length);
+  let h = sha256Bytes(first);
+  for(let i=1;i<KDF_ROUNDS;i++){
+    const nxt = new Uint8Array(h.length + salt.length);
+    nxt.set(h); nxt.set(salt, h.length);
+    h = sha256Bytes(nxt);
+  }
+  return h;
+}
+
+let recipes = [];
+let currentCategory = "すべて";
+let currentQuery = "";
+
+function b64ToBytes(b64){
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+function esc(s){
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+async function decryptRecipes(password){
+  if(!window.crypto || !crypto.subtle){
+    throw new Error("この開き方では暗号を解けません。公開ページ（https）で開いてください。");
+  }
+  const salt = b64ToBytes(PAYLOAD.salt);
+  const iv = b64ToBytes(PAYLOAD.iv);
+  const data = b64ToBytes(PAYLOAD.data);
+  const keyBytes = deriveKeyBytes(password, salt);
+  const key = await crypto.subtle.importKey("raw", keyBytes.buffer, {name:"AES-GCM"}, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt(
+    {name:"AES-GCM", iv:iv.buffer}, key, data.buffer);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+async function tryUnlock(password){
+  const data = await decryptRecipes(password);
+  recipes = data.recipes || [];
+  sessionStorage.setItem("rn_pw", password);
+  document.getElementById("lock").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  buildChips();
+  render();
+}
+
+document.getElementById("lockForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const pw = document.getElementById("pw").value;
+  const err = document.getElementById("lockError");
+  const btn = document.getElementById("unlockBtn");
+  if(!pw){ err.textContent = "合言葉を入れてください"; return; }
+  err.textContent = "";
+  btn.disabled = true; btn.textContent = "開いています…";
+  try{
+    await tryUnlock(pw);
+  }catch(ex){
+    err.textContent = ex && ex.message && ex.message.includes("https")
+      ? ex.message : "合言葉が違うようです";
+    const det = document.getElementById("lockDetail");
+    if(det) det.textContent = "詳細: " + (ex && ex.name ? ex.name : "Error") +
+      " / 入力は " + pw.length + " 文字でした";
+    sessionStorage.removeItem("rn_pw");
+  }finally{
+    btn.disabled = false; btn.textContent = "開く";
+  }
+});
+
+document.getElementById("lockBtn").addEventListener("click", ()=>{
+  recipes = [];
+  sessionStorage.removeItem("rn_pw");
+  document.getElementById("grid").innerHTML = "";
+  document.getElementById("detail").style.display = "none";
+  document.getElementById("app").style.display = "none";
+  document.getElementById("lock").style.display = "flex";
+  document.getElementById("pw").value = "";
+});
+
+function buildChips(){
+  const cats = ["すべて", ...new Set(recipes.map(r=>r.category).filter(Boolean))];
+  const wrap = document.getElementById("chips");
+  wrap.innerHTML = "";
+  cats.forEach(cat=>{
+    const b = document.createElement("button");
+    b.className = "chip" + (cat===currentCategory ? " active" : "");
+    b.textContent = cat;
+    b.addEventListener("click", ()=>{ currentCategory = cat; buildChips(); render(); });
+    wrap.appendChild(b);
+  });
+}
+
+document.getElementById("search").addEventListener("input", (e)=>{
+  currentQuery = e.target.value.trim();
+  render();
+});
+
+function matches(r){
+  if(currentCategory!=="すべて" && r.category!==currentCategory) return false;
+  if(!currentQuery) return true;
+  const hay = [r.title, r.category, r.source, ...(r.ingredients||[]).map(i=>i.name)].join(" ");
+  return hay.includes(currentQuery);
+}
+
+function render(){
+  const grid = document.getElementById("grid");
+  const list = recipes.filter(matches);
+  document.getElementById("empty").style.display = list.length ? "none" : "block";
+  grid.innerHTML = "";
+  list.forEach(r=>{
+    const card = document.createElement("button");
+    card.className = "card";
+    card.innerHTML =
+      '<div class="icon">'+esc(r.icon||"🍽️")+'</div>'+
+      "<h2>"+esc(r.title)+"</h2>"+
+      '<span class="cat">'+esc(r.category||"その他")+"</span>"+
+      '<div class="meta">'+
+        (r.time ? "⏱ "+esc(r.time)+"<br>" : "")+
+        (r.servings ? "👥 "+esc(r.servings)+"<br>" : "")+
+        (r.source ? "✎ "+esc(r.source) : "")+
+      "</div>";
+    card.addEventListener("click", ()=>showDetail(r));
+    grid.appendChild(card);
+  });
+}
+
+function showDetail(r){
+  const inner = document.getElementById("detailInner");
+  const ingRows = (r.ingredients||[]).map(i=>
+    "<tr><td>"+esc(i.name)+'</td><td class="amt">'+esc(i.amount)+"</td></tr>").join("");
+  const stepItems = (r.steps||[]).map(s=>"<li>"+esc(s)+"</li>").join("");
+  inner.innerHTML =
+    '<button id="backBtn">← 一覧にもどる</button>'+
+    '<div class="big-icon">'+esc(r.icon||"🍽️")+"</div>"+
+    "<h2>"+esc(r.title)+"</h2>"+
+    '<div class="detail-meta">'+
+      esc(r.category||"")+
+      (r.time ? " ／ ⏱ "+esc(r.time) : "")+
+      (r.servings ? " ／ 👥 "+esc(r.servings) : "")+
+      (r.source ? "<br>✎ "+esc(r.source) : "")+
+    "</div>"+
+    "<h3>材料</h3>"+
+    '<table class="ing">'+ingRows+"</table>"+
+    "<h3>作り方</h3>"+
+    '<ol class="steps">'+stepItems+"</ol>"+
+    (r.memo ? "<h3>メモ</h3>"+'<div class="memo">'+esc(r.memo)+"</div>" : "");
+  document.getElementById("backBtn").addEventListener("click", ()=>{
+    document.getElementById("detail").style.display = "none";
+  });
+  const d = document.getElementById("detail");
+  d.style.display = "block";
+  d.scrollTop = 0;
+}
+
+// 同じタブで開き直したときは、合言葉を入れ直さなくて済むようにする
+(async ()=>{
+  const saved = sessionStorage.getItem("rn_pw");
+  if(saved){
+    try{ await tryUnlock(saved); }
+    catch(e){ sessionStorage.removeItem("rn_pw"); }
+  }
+})();
+</script>
+</body>
+</html>
