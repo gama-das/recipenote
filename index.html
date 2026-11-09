@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>RecipeNote ― 我が家の味</title>
+<style>
+  :root{
+    --bg:#fff8ef; --card:#ffffff; --ink:#3d2b1f; --sub:#8a6f5c;
+    --accent:#c2571d; --accent-dark:#9c3f10; --line:#f0ddc8; --chip:#fdeeda;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; font-family:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Noto Sans JP",sans-serif;
+    background:var(--bg); color:var(--ink);}
+  button{font-family:inherit; cursor:pointer;}
+  input{font-family:inherit;}
+
+  /* ロック画面 */
+  #lock{min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px;}
+  .lock-box{width:100%; max-width:380px; background:var(--card); border:1px solid var(--line);
+    border-radius:20px; padding:32px 24px; text-align:center; box-shadow:0 8px 30px rgba(156,63,16,.08);}
+  .lock-box .logo{font-size:52px;}
+  .lock-box h1{margin:8px 0 2px; font-size:24px;}
+  .lock-box .tagline{color:var(--sub); font-size:14px; margin:0 0 24px;}
+  .lock-box form{display:flex; flex-direction:column; gap:12px;}
+  .lock-box input[type=password]{font-size:17px; padding:13px 14px; border:1.5px solid var(--line);
+    border-radius:12px; outline:none; text-align:center;}
+  .lock-box input[type=password]:focus{border-color:var(--accent);}
+  .lock-box button{background:var(--accent); color:#fff; border:none; font-size:16px; font-weight:700;
+    padding:13px; border-radius:12px;}
+  .lock-box button:active{background:var(--accent-dark);}
+  .lock-box button:disabled{opacity:.5;}
+  #lockError{color:#c0392b; font-size:14px; min-height:20px; margin:0;}
+  .lock-note{color:var(--sub); font-size:12px; margin-top:18px; line-height:1.6;}
+
+  /* 一覧画面 */
+  #app{display:none; max-width:880px; margin:0 auto; padding:0 16px 60px;}
+  header.top{display:flex; align-items:center; justify-content:space-between; padding:20px 4px 6px;}
+  header.top h1{font-size:22px; margin:0;}
+  header.top h1 .ico{margin-right:6px;}
+  #lockBtn{background:none; border:1.5px solid var(--line); color:var(--sub); border-radius:999px;
+    padding:6px 14px; font-size:13px;}
+  .proto-banner{background:#fff3cd; border:1px solid #eed98a; color:#6b5510; font-size:13px;
+    border-radius:10px; padding:8px 12px; margin:10px 0 4px; text-align:center;}
+  .search-wrap{margin:14px 0 10px;}
+  #search{width:100%; font-size:16px; padding:12px 16px; border:1.5px solid var(--line);
+    border-radius:999px; outline:none; background:#fff;}
+  #search:focus{border-color:var(--accent);}
+  .chips{display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 16px;}
+  .chip{border:1.5px solid var(--line); background:#fff; color:var(--ink); border-radius:999px;
+    padding:6px 14px; font-size:14px;}
+  .chip.active{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px;
+    text-align:left; width:100%; box-shadow:0 2px 10px rgba(156,63,16,.05);}
+  .card:active{transform:scale(.99);}
+  .card .icon{font-size:40px; line-height:1;}
+  .card h2{font-size:18px; margin:10px 0 6px; line-height:1.4;}
+  .meta{color:var(--sub); font-size:13px; line-height:1.7;}
+  .cat{display:inline-block; background:var(--chip); color:var(--accent-dark); font-size:12px;
+    font-weight:700; border-radius:999px; padding:2px 10px; margin-bottom:6px;}
+  .empty{color:var(--sub); text-align:center; padding:40px 0; font-size:15px;}
+
+  /* 詳細画面 */
+  #detail{display:none; position:fixed; inset:0; background:var(--bg); overflow-y:auto; z-index:10;}
+  .detail-inner{max-width:680px; margin:0 auto; padding:0 18px 60px;}
+  #backBtn{background:none; border:none; color:var(--accent); font-size:16px; font-weight:700; padding:16px 0 4px;}
+  .detail-inner .big-icon{font-size:60px; text-align:center; margin-top:6px;}
+  .detail-inner h2{font-size:24px; text-align:center; margin:8px 0 4px;}
+  .detail-meta{text-align:center; color:var(--sub); font-size:14px; margin-bottom:20px;}
+  .detail-inner h3{font-size:17px; border-bottom:2px solid var(--line); padding-bottom:6px; margin:26px 0 12px;}
+  table.ing{width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  table.ing td{padding:9px 14px; font-size:15px; border-bottom:1px solid #f7ecdd;}
+  table.ing tr:last-child td{border-bottom:none;}
+  table.ing td.amt{text-align:right; color:var(--sub); white-space:nowrap; width:35%;}
+  ol.steps{padding-left:22px; line-height:1.9; font-size:15.5px; margin:0;}
+  .memo{background:#fff; border:1px solid var(--line); border-left:5px solid var(--accent);
+    border-radius:10px; padding:12px 16px; font-size:14.5px; line-height:1.8; white-space:pre-wrap;}
+</style>
+</head>
+<body>
+
+<!-- 合言葉画面 -->
+<div id="lock">
+  <div class="lock-box">
+    <div class="logo">🍳</div>
+    <h1>RecipeNote</h1>
+    <p class="tagline">― 我が家の味 ―</p>
+    <form id="lockForm">
+      <input type="password" id="pw" placeholder="家族の合言葉" autocomplete="current-password">
+      <p id="lockError"></p>
+      <button type="submit" id="unlockBtn">開く</button>
+    </form>
+    <p class="lock-note">このページのレシピは暗号化されています。<br>合言葉を知っている家族だけが読めます。</p>
+  </div>
+</div>
+
+<!-- 一覧画面 -->
+<div id="app">
+  <header class="top">
+    <h1><span class="ico">🍳</span>RecipeNote</h1>
+    <button id="lockBtn">🔒 鍵をかける</button>
+  </header>
+  <div class="proto-banner">試作版です ― 中身はサンプルレシピが入っています</div>
+  <div class="search-wrap">
+    <input type="search" id="search" placeholder="料理名・材料で探す">
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="grid" id="grid"></div>
+  <p class="empty" id="empty" style="display:none;">見つかりませんでした</p>
+</div>
+
+<!-- 詳細画面 -->
+<div id="detail">
+  <div class="detail-inner" id="detailInner"></div>
+</div>
+
+<script>
+"use strict";
+// 暗号化されたレシピデータ（合言葉なしでは読めません）
+const PAYLOAD = {"salt":"dQrSpbmDS9jCc/+r2nDucg==","iv":"u1o4MrP+hK5SzDII","data":"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"};
+const ITERATIONS = 200000;
+
+let recipes = [];
+let currentCategory = "すべて";
+let currentQuery = "";
+
+function b64ToBytes(b64){
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+function esc(s){
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+async function decryptRecipes(password){
+  if(!window.crypto || !crypto.subtle){
+    throw new Error("この開き方では暗号を解けません。公開ページ（https）で開いてください。");
+  }
+  const enc = new TextEncoder();
+  const baseKey = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt:b64ToBytes(PAYLOAD.salt), iterations:ITERATIONS, hash:"SHA-256"},
+    baseKey, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt(
+    {name:"AES-GCM", iv:b64ToBytes(PAYLOAD.iv)}, key, b64ToBytes(PAYLOAD.data));
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+async function tryUnlock(password){
+  const data = await decryptRecipes(password);
+  recipes = data.recipes || [];
+  sessionStorage.setItem("rn_pw", password);
+  document.getElementById("lock").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  buildChips();
+  render();
+}
+
+document.getElementById("lockForm").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const pw = document.getElementById("pw").value;
+  const err = document.getElementById("lockError");
+  const btn = document.getElementById("unlockBtn");
+  if(!pw){ err.textContent = "合言葉を入れてください"; return; }
+  err.textContent = "";
+  btn.disabled = true; btn.textContent = "開いています…";
+  try{
+    await tryUnlock(pw);
+  }catch(ex){
+    err.textContent = ex && ex.message && ex.message.includes("https")
+      ? ex.message : "合言葉が違うようです";
+    sessionStorage.removeItem("rn_pw");
+  }finally{
+    btn.disabled = false; btn.textContent = "開く";
+  }
+});
+
+document.getElementById("lockBtn").addEventListener("click", ()=>{
+  recipes = [];
+  sessionStorage.removeItem("rn_pw");
+  document.getElementById("grid").innerHTML = "";
+  document.getElementById("detail").style.display = "none";
+  document.getElementById("app").style.display = "none";
+  document.getElementById("lock").style.display = "flex";
+  document.getElementById("pw").value = "";
+});
+
+function buildChips(){
+  const cats = ["すべて", ...new Set(recipes.map(r=>r.category).filter(Boolean))];
+  const wrap = document.getElementById("chips");
+  wrap.innerHTML = "";
+  cats.forEach(cat=>{
+    const b = document.createElement("button");
+    b.className = "chip" + (cat===currentCategory ? " active" : "");
+    b.textContent = cat;
+    b.addEventListener("click", ()=>{ currentCategory = cat; buildChips(); render(); });
+    wrap.appendChild(b);
+  });
+}
+
+document.getElementById("search").addEventListener("input", (e)=>{
+  currentQuery = e.target.value.trim();
+  render();
+});
+
+function matches(r){
+  if(currentCategory!=="すべて" && r.category!==currentCategory) return false;
+  if(!currentQuery) return true;
+  const hay = [r.title, r.category, r.source, ...(r.ingredients||[]).map(i=>i.name)].join(" ");
+  return hay.includes(currentQuery);
+}
+
+function render(){
+  const grid = document.getElementById("grid");
+  const list = recipes.filter(matches);
+  document.getElementById("empty").style.display = list.length ? "none" : "block";
+  grid.innerHTML = "";
+  list.forEach(r=>{
+    const card = document.createElement("button");
+    card.className = "card";
+    card.innerHTML =
+      '<div class="icon">'+esc(r.icon||"🍽️")+'</div>'+
+      "<h2>"+esc(r.title)+"</h2>"+
+      '<span class="cat">'+esc(r.category||"その他")+"</span>"+
+      '<div class="meta">'+
+        (r.time ? "⏱ "+esc(r.time)+"<br>" : "")+
+        (r.servings ? "👥 "+esc(r.servings)+"<br>" : "")+
+        (r.source ? "✎ "+esc(r.source) : "")+
+      "</div>";
+    card.addEventListener("click", ()=>showDetail(r));
+    grid.appendChild(card);
+  });
+}
+
+function showDetail(r){
+  const inner = document.getElementById("detailInner");
+  const ingRows = (r.ingredients||[]).map(i=>
+    "<tr><td>"+esc(i.name)+'</td><td class="amt">'+esc(i.amount)+"</td></tr>").join("");
+  const stepItems = (r.steps||[]).map(s=>"<li>"+esc(s)+"</li>").join("");
+  inner.innerHTML =
+    '<button id="backBtn">← 一覧にもどる</button>'+
+    '<div class="big-icon">'+esc(r.icon||"🍽️")+"</div>"+
+    "<h2>"+esc(r.title)+"</h2>"+
+    '<div class="detail-meta">'+
+      esc(r.category||"")+
+      (r.time ? " ／ ⏱ "+esc(r.time) : "")+
+      (r.servings ? " ／ 👥 "+esc(r.servings) : "")+
+      (r.source ? "<br>✎ "+esc(r.source) : "")+
+    "</div>"+
+    "<h3>材料</h3>"+
+    '<table class="ing">'+ingRows+"</table>"+
+    "<h3>作り方</h3>"+
+    '<ol class="steps">'+stepItems+"</ol>"+
+    (r.memo ? "<h3>メモ</h3>"+'<div class="memo">'+esc(r.memo)+"</div>' : "");
+  document.getElementById("backBtn").addEventListener("click", ()=>{
+    document.getElementById("detail").style.display = "none";
+  });
+  const d = document.getElementById("detail");
+  d.style.display = "block";
+  d.scrollTop = 0;
+}
+
+// 同じタブで開き直したときは、合言葉を入れ直さなくて済むようにする
+(async ()=>{
+  const saved = sessionStorage.getItem("rn_pw");
+  if(saved){
+    try{ await tryUnlock(saved); }
+    catch(e){ sessionStorage.removeItem("rn_pw"); }
+  }
+})();
+</script>
+</body>
+</html>
